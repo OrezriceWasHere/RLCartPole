@@ -1,5 +1,8 @@
 import numpy as np
 
+from entities import Observation
+
+
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
@@ -20,6 +23,8 @@ class PolicyGradientAgent(object):
         :param state: environment state
         :return: vector of probabilities
         '''
+        observation = Observation(*(state[0]))
+        return []
         #TODO
 
     def get_action(self, state):

@@ -52,6 +52,7 @@ def train(env, agent,args):
         db = np.zeros_like(agent.b)
         for j in range(args.b):
             #TODO fill in
+            pass
 
         if i%100 == 25:
             temp = np.array(rewards[i - 25:i])
