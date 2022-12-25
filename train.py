@@ -35,12 +35,18 @@ env = gym.make('CartPole-v1')
 print('Enviourment: CartPole-v1 \nNumber of actions: ' ,env.action_space.n,'\nDimension of state space: ',np.prod(env.observation_space.shape))
 def run_episode(env, agent ,reward_to_go =False ,baseline=0.):
     state = env.reset()
+    state = state[0]
     rewards = []
     terminal = False
     while not terminal:
         action = agent.get_action(state)
-        state, reward, terminal, _ = env.step(action)
+        new_state, reward, terminal, _, _ = env.step(action)
+        new_action = agent.get_action(new_state)
         rewards.append(reward)
+        dW, db = agent.grad_log_prob(state, action, reward, new_state, new_action)
+
+        state = new_state
+        action = new_action
         #TODO fill in
     return dW, db, sum(rewards)
 

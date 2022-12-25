@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 
 from entities import Observation
@@ -10,12 +11,16 @@ def softmax(x):
 
 
 class PolicyGradientAgent(object):
-    def __init__(self, env, lr=0.1):
+    def __init__(self, env, lr=0.1, gamma=0.8):
         self.num_actions = env.action_space.n
         self.num_features = env.observation_space.shape[0]
         self.W = np.zeros((self.num_features, self.num_actions))
         self.b = np.zeros((self.num_actions))
         self.lr = lr
+        self.gamma = gamma
+
+    def compute_q_value(self, features, weights):
+        return numpy.asarray(features).dot(weights)
 
     def action_probability(self, state):
         '''
@@ -23,8 +28,9 @@ class PolicyGradientAgent(object):
         :param state: environment state
         :return: vector of probabilities
         '''
-        observation = Observation(*(state[0]))
-        return []
+        scores = np.asarray(state).dot(self.W) + self.b
+        probabilities = softmax(scores)
+        return probabilities
         #TODO
 
     def get_action(self, state):
@@ -36,13 +42,18 @@ class PolicyGradientAgent(object):
         probs = self.action_probability(state)
         return np.random.choice(self.num_actions, p=probs)
 
-    def grad_log_prob(self, state, action):
+    def grad_log_prob(self, state, action, reward, new_state, new_action):
         '''
         Compute gradient of log P(a|S) w.r.t W and b
         :param state: environment state
         :param action: descrete action taken
         :return: dlogP(a|s)/dW, dlogP(a|s)/db
         '''
+        q_old, q_new = self.compute_q_value(state, self.W), self.compute_q_value(new_state, self.W)
+        delta = reward + self.gamma * q_new - q_old
+        gradient_b = delta - self.action_probability(new_state)
+        gradient_w = np.outer(gradient_b, new_state)
+        return gradient_w, gradient_b
         # TODO
 
     def update_weights(self, dW, db):
