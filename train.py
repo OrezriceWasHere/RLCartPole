@@ -38,16 +38,13 @@ def run_episode(env, agent ,reward_to_go =False ,baseline=0.):
     state = state[0]
     rewards = []
     terminal = False
+    dW, db = 0, 0
     while not terminal:
         action = agent.get_action(state)
-        new_state, reward, terminal, _, _ = env.step(action)
-        new_action = agent.get_action(new_state)
+        state, reward, terminal, _, _ = env.step(action)
         rewards.append(reward)
-        dW, db = agent.grad_log_prob(state, action, reward, new_state, new_action)
-
-        state = new_state
-        action = new_action
-        #TODO fill in
+        temp_dW, temp_db = agent.grad_log_prob(state, action)
+        dW, db = dW + temp_dW, db + temp_db
     return dW, db, sum(rewards)
 
 
@@ -57,8 +54,11 @@ def train(env, agent,args):
         dW = np.zeros_like(agent.W)
         db = np.zeros_like(agent.b)
         for j in range(args.b):
-            #TODO fill in
-            pass
+            temp_dW, temp_db, sum_rewards = run_episode(env, agent)
+            dW, db = dW + temp_dW, db + temp_db
+            rewards.append(rewards)
+
+        agent.update_weights(dW, db)
 
         if i%100 == 25:
             temp = np.array(rewards[i - 25:i])
