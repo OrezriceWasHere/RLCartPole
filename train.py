@@ -33,39 +33,59 @@ np.random.seed(args.seed)
 env = gym.make('CartPole-v1')
 
 print('Enviourment: CartPole-v1 \nNumber of actions: ' ,env.action_space.n,'\nDimension of state space: ',np.prod(env.observation_space.shape))
-def run_episode(env, agent ,reward_to_go =False ,baseline=0.):
+def run_episode(env, agent):
     state = env.reset()
     state = state[0]
     rewards = []
     terminal = False
-    dW, db = 0, 0
+    decay = agent.get_decay()
+    current_decay = 1
+    dW, db = np.zeros_like(agent.W), np.zeros_like(agent.b)
     while not terminal:
         action = agent.get_action(state)
         state, reward, terminal, _, _ = env.step(action)
-        rewards.append(reward)
+        rewards.append(current_decay * reward)
+        current_decay = current_decay * decay
         temp_dW, temp_db = agent.grad_log_prob(state, action)
         dW, db = dW + temp_dW, db + temp_db
-    return dW, db, sum(rewards)
+    return dW, db, sum(rewards), len(rewards)
 
 
-def train(env, agent,args):
-    rewards = []
+def train(env, agent, args):
+    all_rewards = []
     for i in range(args.N):
-        dW = np.zeros_like(agent.W)
-        db = np.zeros_like(agent.b)
+        dW_list, db_list = [], []
+        rewards_in_batch = []
         for j in range(args.b):
-            temp_dW, temp_db, sum_rewards = run_episode(env, agent)
-            dW, db = dW + temp_dW, db + temp_db
-            rewards.append(rewards)
+            dW, db, episode_reward, episode_len = run_episode(env, agent)
+            rewards_in_batch.append(episode_reward)
+            dW_list.append(dW)
+            db_list.append(db)
 
-        agent.update_weights(dW, db)
+        all_rewards.extend(rewards_in_batch)
+        n = len(db_list)
+        gradient_w, gradient_b = np.zeros_like(agent.W), np.zeros_like(agent.b)
+        if args.RTG:
+            for dW, db, index in zip(dW_list, db_list, range(n)):
+                gradient_w += dW * sum(rewards_in_batch[index:n])
+                gradient_b += db * sum(rewards_in_batch[index:n])
+        else:
+            baseline_factor = 0
+            if args.baseline and len(all_rewards) >= 10:
+                baseline_factor = sum(all_rewards[-10:])
+            sum_rewards = sum(rewards_in_batch) - baseline_factor * n
+            for dW, db in zip(dW_list, db_list):
+                gradient_w += dW * sum_rewards
+                gradient_b += db * sum_rewards
+
+        agent.update_weights(gradient_w, gradient_b)
 
         if i%100 == 25:
-            temp = np.array(rewards[i - 25:i])
+            temp = np.array(all_rewards[i - 25:i])
             dateTimeObj = datetime.now()
             timestampStr = dateTimeObj.strftime("%H:%M:%S")
             print('{}: [{}-{}] reward {:.1f}{}{:.1f}'.format(timestampStr,i-25,i,np.mean(temp),u"\u00B1",np.std(temp)/np.sqrt(25)))
-    return agent, rewards
+    return agent, all_rewards
 
 def test(env, agent):
     rewards = []

@@ -7,12 +7,13 @@ def softmax(x):
 
 
 class PolicyGradientAgent(object):
-    def __init__(self, env, lr=0.1):
+    def __init__(self, env, lr=0.1, decay=0.9):
         self.num_actions = env.action_space.n
         self.num_features = env.observation_space.shape[0]
         self.W = np.zeros((self.num_features, self.num_actions))
         self.b = np.zeros((self.num_actions))
         self.lr = lr
+        self.decay = decay
 
     def action_probability(self, state):
         '''
@@ -23,7 +24,6 @@ class PolicyGradientAgent(object):
         scores = np.asarray(state).dot(self.W) + self.b
         probabilities = softmax(scores)
         return probabilities
-        #TODO
 
     def get_action(self, state):
         '''
@@ -41,13 +41,14 @@ class PolicyGradientAgent(object):
         :param action: descrete action taken
         :return: dlogP(a|s)/dW, dlogP(a|s)/db
         '''
-        action_chosen_one_hot = np.zeros(2)
+        action_chosen_one_hot = np.zeros(self.num_actions)
         action_chosen_one_hot[action] = 1
         gradient_b = action_chosen_one_hot - self.action_probability(state)
         gradient_w = np.outer(state, gradient_b)
         return gradient_w, gradient_b
 
-        # TODO
+    def get_decay(self) -> float:
+        return self.decay
 
     def update_weights(self, dW, db):
         '''
@@ -57,5 +58,3 @@ class PolicyGradientAgent(object):
         '''
         self.W += self.lr * dW
         self.b += self.lr * db
-
-
